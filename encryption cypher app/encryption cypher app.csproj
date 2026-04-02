@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <RootNamespace>encryption_cypher_app</RootNamespace>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>Revenge-of-the-Sith.ico</ApplicationIcon>
+    <Authors>UnicornGod</Authors>
+    <Copyright>Copyright © UnicornGod</Copyright>
+    <Description>AES-GCM text and file encryption tool with PBKDF2 key derivation.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="Revenge-of-the-Sith.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Form1.cs">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Compile>
+  </ItemGroup>
+
+</Project>

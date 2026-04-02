@@ -1,0 +1,16 @@
+# Build artifacts
+bin/
+obj/
+
+# Visual Studio IDE cache
+.vs/
+
+# User-specific settings (may contain local machine paths)
+*.user
+
+# Publish profiles (user-specific)
+Properties/PublishProfiles/
+
+# OS-specific
+Thumbs.db
+.DS_Store
