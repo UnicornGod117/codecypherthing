@@ -108,10 +108,18 @@ namespace encryption_cypher_app
 
         }
 
-        private void encryptioncopybutton_Click(object sender, EventArgs e)
+        private async void encryptioncopybutton_Click(object sender, EventArgs e)
         {
+            if (encryptioncopybutton.Text == "Copied!") return;
             string encryptionoutput = TextBoxEncryptOutput.Text;
-            Clipboard.SetText(encryptionoutput);
+            if (!string.IsNullOrEmpty(encryptionoutput))
+            {
+                Clipboard.SetText(encryptionoutput);
+                string originalText = encryptioncopybutton.Text;
+                encryptioncopybutton.Text = "Copied!";
+                await Task.Delay(1500);
+                encryptioncopybutton.Text = originalText;
+            }
         }
 
         private void decryptionpastebutton_Click(object sender, EventArgs e)
