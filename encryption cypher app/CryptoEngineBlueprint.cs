@@ -7,28 +7,11 @@ using System.Threading;
 
 namespace encryption_cypher_app
 {
-    /// <summary>
-    /// CryptoEngineBlueprint (Durable Edition)
-    ///
-    /// What this provides:
-    ///  - Encrypt + Authenticate (AEAD) using AES-GCM
-    ///  - Random per-message nonce (IV) and per-message salt
-    ///  - Password-based key derivation (PBKDF2-SHA256) suitable for human keys
-    ///  - Base64 transport of a self-describing packet (version + KDF params included)
-    ///
-    /// Why this is durable:
-    ///  - AES-GCM is a vetted, standard AEAD mode.
-    ///  - PBKDF2 makes brute-force against human keys much slower.
-    ///  - Salt prevents precomputed attacks and ensures identical passphrases do not reuse the same derived key.
-    ///
-    /// Your requested behavior:
-    ///  - Decrypt returns (plaintext, tagOk).
-    ///  - If tagOk == false and bogusOnFail == true, it returns intentionally bogus output.
-    ///
+    /// <notes>
     /// Notes:
     ///  - Strings in .NET are immutable; you cannot reliably wipe a passphrase string from memory.
     ///    (We still wipe derived key bytes and other byte arrays where practical.)
-    /// </summary>
+    /// </notes>
     /// <remarks>
     /// Original design: UnicornGod. This attribution is preserved in the packet format version history.
     /// </remarks>
