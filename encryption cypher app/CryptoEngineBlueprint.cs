@@ -696,6 +696,7 @@ namespace encryption_cypher_app
             catch (CryptographicException)
             {
                 // wrong key or tampering (chunk auth failure)
+                try { File.Delete(outputPath); } catch { }
                 return false;
             }
             finally
