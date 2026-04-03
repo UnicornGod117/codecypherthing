@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.IO;
+using System.Linq;
 using System.Windows.Forms;
 
 namespace encryption_cypher_app
@@ -58,18 +59,21 @@ namespace encryption_cypher_app
                 using var ofd = new OpenFileDialog
                 {
                     Title = "Select a file to encrypt",
-                    CheckFileExists = true
+                    CheckFileExists = true,
+                    InitialDirectory = AppSettings.GetLastUsedDirectory() ?? string.Empty
                 };
 
                 if (ofd.ShowDialog() != DialogResult.OK) return;
 
                 string inPath = ofd.FileName;
+                AppSettings.SetLastUsedDirectory(Path.GetDirectoryName(inPath));
 
                 using var sfd = new SaveFileDialog
                 {
                     Title = "Save encrypted file as",
                     FileName = Path.GetFileName(inPath) + ".enc",
-                    OverwritePrompt = true
+                    OverwritePrompt = true,
+                    InitialDirectory = AppSettings.GetLastUsedDirectory() ?? string.Empty
                 };
 
                 if (sfd.ShowDialog() != DialogResult.OK) return;
@@ -96,18 +100,21 @@ namespace encryption_cypher_app
                 using var ofd = new OpenFileDialog
                 {
                     Title = "Select an encrypted file (.enc)",
-                    CheckFileExists = true
+                    CheckFileExists = true,
+                    InitialDirectory = AppSettings.GetLastUsedDirectory() ?? string.Empty
                 };
 
                 if (ofd.ShowDialog() != DialogResult.OK) return;
 
                 string inEncPath = ofd.FileName;
+                AppSettings.SetLastUsedDirectory(Path.GetDirectoryName(inEncPath));
 
                 using var sfd = new SaveFileDialog
                 {
                     Title = "Save decrypted file as",
-                    FileName = Path.GetFileNameWithoutExtension(inEncPath), // crude default
-                    OverwritePrompt = true
+                    FileName = Path.GetFileNameWithoutExtension(inEncPath),
+                    OverwritePrompt = true,
+                    InitialDirectory = AppSettings.GetLastUsedDirectory() ?? string.Empty
                 };
 
                 if (sfd.ShowDialog() != DialogResult.OK) return;
@@ -129,6 +136,189 @@ namespace encryption_cypher_app
             catch (Exception ex)
             {
                 MessageBox.Show("Decryption failed:\n" + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void ExportKeysButton_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                // Step 1: prompt for optional master password
+                string? masterPassword = null;
+                bool    useVaultMode   = false;
+
+                using var prompt = new PasswordPromptDialog(
+                    "Enter a master password to protect this key file (Vault Mode).\n" +
+                    "Click Skip to use Token Mode (lower security — hardcoded internal password).",
+                    PasswordPromptDialog.ButtonMode.OkSkip);
+
+                DialogResult promptResult = prompt.ShowDialog(this);
+
+                if (promptResult == DialogResult.Cancel)
+                    return; // user aborted entirely
+
+                if (promptResult == DialogResult.OK)
+                {
+                    masterPassword = prompt.Password;
+                    useVaultMode   = true;
+                }
+                else // DialogResult.No == Skip → Token Mode
+                {
+                    DialogResult warn = MessageBox.Show(
+                        "⚠️ SECURITY ALERT: You are exporting your keys without a master password (Token Mode).\n\n" +
+                        "Token Mode uses a hardcoded internal password baked into the application. " +
+                        "Anyone with a copy of EncSypher can attempt to decrypt a Token-mode key file.\n\n" +
+                        "Treat this file like a physical master key — do NOT share it publicly or store it in " +
+                        "an untrusted location.\n\n" +
+                        "Do you want to continue with Token Mode?",
+                        "Security Alert — Token Mode",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Warning);
+
+                    if (warn != DialogResult.Yes) return;
+
+                    useVaultMode   = false;
+                    masterPassword = null;
+                }
+
+                // Step 2: read keys from Form1
+                Form1? form1 = Application.OpenForms.OfType<Form1>().FirstOrDefault();
+                if (form1 == null)
+                {
+                    MessageBox.Show("Form1 is not open.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                string k1 = form1.Keybox1.Text ?? "";
+                string k2 = form1.keybox2.Text ?? "";
+                string k3 = form1.keybox3.Text ?? "";
+                string k4 = form1.keybox4.Text ?? "";
+
+                // Step 3: choose save location
+                using var sfd = new SaveFileDialog
+                {
+                    Title            = "Export key file",
+                    Filter           = "EncSypher Key File (*.keyenc)|*.keyenc|All Files (*.*)|*.*",
+                    DefaultExt       = "keyenc",
+                    FileName         = "mykeys.keyenc",
+                    OverwritePrompt  = true,
+                    InitialDirectory = AppSettings.GetLastUsedDirectory() ?? string.Empty
+                };
+
+                if (sfd.ShowDialog(this) != DialogResult.OK) return;
+
+                AppSettings.SetLastUsedDirectory(Path.GetDirectoryName(sfd.FileName));
+
+                // Step 4: export and write
+                int    mode       = useVaultMode ? 1 : 0;
+                byte[] keyEncData = CryptoEngineBlueprint.ExportKeys(k1, k2, k3, k4, mode, masterPassword);
+                File.WriteAllBytes(sfd.FileName, keyEncData);
+                Array.Clear(keyEncData, 0, keyEncData.Length);
+
+                MessageBox.Show(
+                    $"Keys exported successfully ({(useVaultMode ? "Vault Mode" : "Token Mode")}).",
+                    "Export Complete",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Export failed:\n" + ex.Message, "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void ImportKeysButton_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                // Step 1: open .keyenc file
+                using var ofd = new OpenFileDialog
+                {
+                    Title            = "Import key file",
+                    Filter           = "EncSypher Key File (*.keyenc)|*.keyenc|All Files (*.*)|*.*",
+                    CheckFileExists  = true,
+                    InitialDirectory = AppSettings.GetLastUsedDirectory() ?? string.Empty
+                };
+
+                if (ofd.ShowDialog(this) != DialogResult.OK) return;
+
+                AppSettings.SetLastUsedDirectory(Path.GetDirectoryName(ofd.FileName));
+
+                byte[] data = File.ReadAllBytes(ofd.FileName);
+
+                // Step 2: validate minimum size and peek at mode byte (index 5)
+                if (data.Length < 6)
+                {
+                    MessageBox.Show("File is too small to be a valid .keyenc file.",
+                        "Import Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    Array.Clear(data, 0, data.Length);
+                    return;
+                }
+
+                byte   modeFlag      = data[5];
+                string? masterPassword = null;
+
+                if (modeFlag == 0x01) // Vault mode — ask for password
+                {
+                    using var prompt = new PasswordPromptDialog(
+                        "This key file is Vault-protected.\nEnter the master password to decrypt it:",
+                        PasswordPromptDialog.ButtonMode.OkCancel);
+
+                    if (prompt.ShowDialog(this) != DialogResult.OK)
+                    {
+                        Array.Clear(data, 0, data.Length);
+                        return;
+                    }
+
+                    masterPassword = prompt.Password;
+                }
+
+                // Step 3: decrypt
+                var (k1, k2, k3, k4) = CryptoEngineBlueprint.ImportKeys(data, masterPassword);
+                Array.Clear(data, 0, data.Length);
+
+                // Step 4: get Form1 and enable masking BEFORE populating key boxes
+                Form1? form1 = Application.OpenForms.OfType<Form1>().FirstOrDefault();
+                if (form1 == null)
+                {
+                    MessageBox.Show("Form1 is not open.", "Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                form1.Keybox1.UseSystemPasswordChar = true;
+                form1.keybox2.UseSystemPasswordChar = true;
+                form1.keybox3.UseSystemPasswordChar = true;
+                form1.keybox4.UseSystemPasswordChar = true;
+
+                // Sync the Hide Keys checkbox on this form
+                hideKeysCheckbox.Checked = true;
+
+                // Step 5: populate
+                form1.Keybox1.Text = k1;
+                form1.keybox2.Text = k2;
+                form1.keybox3.Text = k3;
+                form1.keybox4.Text = k4;
+
+                MessageBox.Show("Keys imported successfully.",
+                    "Import Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (System.Security.Cryptography.CryptographicException)
+            {
+                MessageBox.Show(
+                    "Import failed: wrong password, or the file has been tampered with.",
+                    "Authentication Failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            catch (InvalidDataException ex)
+            {
+                MessageBox.Show("Import failed: " + ex.Message,
+                    "Invalid File", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Import failed:\n" + ex.Message,
+                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 

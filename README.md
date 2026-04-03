@@ -1,5 +1,7 @@
 # EncSypher
 
+**Version 3.4**
+
 A Windows desktop encryption tool built in C# (.NET 9). Encrypts and decrypts text and files using **AES-256-GCM** with a four-part passphrase key system.
 
 Made by **Unicorn God**.
@@ -10,8 +12,10 @@ Made by **Unicorn God**.
 
 - **Text encryption / decryption** — paste text in, get a Base64-encoded encrypted packet out. Share the packet; only someone with the same four keys can read it.
 - **File encryption / decryption** — encrypt any file to a `.enc` file. Streamed in 1 MiB chunks so large files work fine.
-- **Random key generator** — generate random numeric keys up to a chosen maximum.
+- **Random key generator** — generate random keys with configurable length, digit count, and special character count.
 - **Key hiding** — toggle password-char masking on the key boxes.
+- **Last Used Directory** — file dialogs remember the last folder you opened or saved to, persisted across sessions.
+- **Key Export / Import** — save the four key boxes to an encrypted `.keyenc` file and restore them later. See the [Key Management](#key-management-keyenc-files) section below.
 
 ---
 
@@ -65,6 +69,28 @@ passphrase = Key1 + "\n" + Key2 + "\n" + Key3 + "\n" + Key4
 ```
 
 All four boxes must match exactly on both sides to decrypt successfully. Keys can be any text — words, numbers, symbols, or a mix.
+
+---
+
+## Key Management (.keyenc files)
+
+The **Extra** panel (Form 2) has **Export Keys** and **Import Keys** buttons that let you save and restore the four key boxes to/from a `.keyenc` file. This saves you from re-typing all four keys every time.
+
+### Vault Mode (recommended)
+
+You set your own master password at export time. The keys are encrypted with AES-256-GCM using PBKDF2-SHA256 at **600,000 iterations**. Only someone who knows your master password can import the file. This is the secure option.
+
+### Token Mode
+
+Uses a hardcoded internal password baked into the application. This means **any copy of EncSypher can decrypt a Token-mode key file** — there is no per-user secret involved. Use this only as a convenience backup stored somewhere you fully control (e.g., your own encrypted drive or a USB you keep physically secure). **Do not share Token-mode `.keyenc` files publicly or send them over untrusted channels.**
+
+### What gets stored
+
+The four key box values are joined with a newline separator, encrypted, and written to the file along with a random salt and nonce. Nothing else is stored. Two exports of the same keys always produce different bytes because the salt and nonce are regenerated each time.
+
+### Security reminder
+
+This is a hobby project. Do not use it to protect anything truly important.
 
 ---
 
@@ -148,8 +174,15 @@ When `bogusOnFail: true` (the app's default), a failed decryption returns random
 | Authentication tag | 16 bytes (GCM tag) |
 | File header auth | HMAC-SHA256 |
 | File chunking | 1 MiB chunks, each independently authenticated |
+| .keyenc Vault Mode KDF | PBKDF2-SHA256, 600,000 iterations |
 
 Every encrypted message or file carries its own random salt and nonce — encrypting the same plaintext twice always produces a different ciphertext. The authentication tag means any tampering with the ciphertext is detected and rejected before any data is returned.
+
+---
+
+## Changelog
+
+From version 3.4 onwards, all project changes and updates will be logged inside the `changelog/` folder using Markdown files.
 
 ---
 

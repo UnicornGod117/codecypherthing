@@ -12,3 +12,14 @@ later on when i uploaded this to github i have employed the use of jules as ai h
 ## extra
 i made this out of my own interest and hobby, but primarily to try and learn (which is why i made the ai make a blueprint and not the whole thing itself)
 this is not a serious project, although according to ai the algorithm is strong, don't use this for anything that's important.
+
+---
+
+## v3.4 features
+
+The following features introduced in v3.4 were implemented with the assistance of **Claude Code** (model: `claude-sonnet-4-6`):
+
+- **Key Export/Import (`.keyenc` files)** — Vault Mode (user-supplied master password, 600k PBKDF2 iterations) and Token Mode (hardcoded internal password, 200k iterations), both using AES-256-GCM encryption with full memory-wiping via `CryptographicOperations.ZeroMemory`.
+- **Last Used Directory memory** — `AppSettings.cs` persists the last file-dialog directory to `%AppData%\EncSypher\settings.json` using `System.Text.Json`.
+- **`changelog/` restructuring** — `.jules/` folder contents moved to `changelog/` to centralise project change logs. From v3.4 onwards all updates are logged there.
+- **Version bump to 3.4** — version updated across `.csproj`, UI label, and documentation.

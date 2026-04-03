@@ -42,6 +42,8 @@
             EncryptFileButton = new Button();
             DecryptFileButton = new Button();
             author = new Label();
+            ExportKeysButton = new Button();
+            ImportKeysButton = new Button();
             SuspendLayout();
             // 
             // form2titlelabel
@@ -170,7 +172,27 @@
             DecryptFileButton.Text = "Decrypt File";
             DecryptFileButton.UseVisualStyleBackColor = true;
             DecryptFileButton.Click += DecryptFileButton_Click;
-            // 
+            //
+            // ExportKeysButton
+            //
+            ExportKeysButton.Location = new Point(82, 471);
+            ExportKeysButton.Name = "ExportKeysButton";
+            ExportKeysButton.Size = new Size(139, 38);
+            ExportKeysButton.TabIndex = 14;
+            ExportKeysButton.Text = "Export Keys";
+            ExportKeysButton.UseVisualStyleBackColor = true;
+            ExportKeysButton.Click += ExportKeysButton_Click;
+            //
+            // ImportKeysButton
+            //
+            ImportKeysButton.Location = new Point(82, 529);
+            ImportKeysButton.Name = "ImportKeysButton";
+            ImportKeysButton.Size = new Size(139, 38);
+            ImportKeysButton.TabIndex = 15;
+            ImportKeysButton.Text = "Import Keys";
+            ImportKeysButton.UseVisualStyleBackColor = true;
+            ImportKeysButton.Click += ImportKeysButton_Click;
+            //
             // author
             // 
             author.AutoSize = true;
@@ -189,6 +211,8 @@
             BackColor = SystemColors.Desktop;
             ClientSize = new Size(1154, 725);
             Controls.Add(author);
+            Controls.Add(ImportKeysButton);
+            Controls.Add(ExportKeysButton);
             Controls.Add(DecryptFileButton);
             Controls.Add(EncryptFileButton);
             Controls.Add(hideKeysCheckbox);
@@ -224,6 +248,8 @@
         private CheckBox hideKeysCheckbox;
         private Button EncryptFileButton;
         private Button DecryptFileButton;
+        private Button ExportKeysButton;
+        private Button ImportKeysButton;
         private Label author;
     }
 }
