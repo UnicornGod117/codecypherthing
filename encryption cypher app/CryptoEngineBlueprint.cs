@@ -838,5 +838,195 @@ namespace encryption_cypher_app
             Buffer.BlockCopy(b, 0, r, a.Length, b.Length);
             return r;
         }
+
+
+        // ==========================
+        // KEY EXPORT / IMPORT (.keyenc)
+        // ==========================
+        //
+        // .keyenc binary format
+        // ─────────────────────
+        // [0-3]   Magic          ASCII "ENCS"   (4 bytes)
+        // [4]     FileVersion    0x01            (1 byte)
+        // [5]     Mode           0x00 = Token    (1 byte)
+        //                        0x01 = Vault
+        // [6-21]  Salt           16 bytes        (random per export)
+        // [22-33] Nonce          12 bytes        (random per export)
+        // [34 .. N-16]           AES-GCM ciphertext (variable length)
+        // [N-16 .. N]            AES-GCM Tag    (16 bytes)
+        //
+        // Plaintext: UTF-8 of "k1\nk2\nk3\nk4"  (same '\n' separator as JoinKeyParts)
+        //
+        // Token mode : hardcoded internal password, 200k PBKDF2 iterations
+        // Vault mode : caller-supplied master password, 600k PBKDF2 iterations
+
+        private static readonly byte[] KeyEncMagic = new byte[] { 0x45, 0x4E, 0x43, 0x53 }; // "ENCS"
+        private const byte   KeyEncVersion   = 0x01;
+        private const byte   KeyEncModeToken = 0x00;
+        private const byte   KeyEncModeVault = 0x01;
+        private const string TokenPassword   = "ENCSYPHER_TOKEN_1337_UG";
+        private const int    KeyEncSaltSize  = 16;
+        private const int    KeyEncNonceSize = 12;
+        private const int    KeyEncTagSize   = 16;
+        private const int    TokenIterations = 200_000;
+        private const int    VaultIterations = 600_000;
+
+        /// <summary>
+        /// Serialises four key parts into an encrypted .keyenc byte array.
+        /// </summary>
+        /// <param name="k1">Key part 1</param>
+        /// <param name="k2">Key part 2</param>
+        /// <param name="k3">Key part 3</param>
+        /// <param name="k4">Key part 4</param>
+        /// <param name="mode">0 = Token (hardcoded password), 1 = Vault (user password)</param>
+        /// <param name="masterPassword">Required when mode == 1; ignored when mode == 0.</param>
+        /// <returns>Raw bytes suitable for writing directly to a .keyenc file.</returns>
+        public static byte[] ExportKeys(string k1, string k2, string k3, string k4,
+                                        int mode, string? masterPassword)
+        {
+            if (mode != 0 && mode != 1)
+                throw new ArgumentOutOfRangeException(nameof(mode), "Mode must be 0 (Token) or 1 (Vault).");
+
+            string password  = mode == KeyEncModeVault ? (masterPassword ?? string.Empty) : TokenPassword;
+            int    iterations = mode == KeyEncModeVault ? VaultIterations : TokenIterations;
+            byte   modeFlag  = (byte)mode;
+
+            // Build plaintext: k1\nk2\nk3\nk4
+            string joined    = string.Join("\n", k1 ?? "", k2 ?? "", k3 ?? "", k4 ?? "");
+            byte[] plaintext = Encoding.UTF8.GetBytes(joined);
+
+            byte[] salt  = new byte[KeyEncSaltSize];
+            byte[] nonce = new byte[KeyEncNonceSize];
+            RandomNumberGenerator.Fill(salt);
+            RandomNumberGenerator.Fill(nonce);
+
+            byte[] key        = DeriveAesKeyFromPassphrase(password, salt, iterations);
+            byte[] ciphertext = new byte[plaintext.Length];
+            byte[] tag        = new byte[KeyEncTagSize];
+
+            try
+            {
+                using var aesGcm = new AesGcm(key, KeyEncTagSize);
+                aesGcm.Encrypt(
+                    nonce:          nonce,
+                    plaintext:      plaintext,
+                    ciphertext:     ciphertext,
+                    tag:            tag,
+                    associatedData: null
+                );
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(key);
+                CryptographicOperations.ZeroMemory(plaintext);
+            }
+
+            // Pack: Magic(4) + Version(1) + Mode(1) + Salt(16) + Nonce(12) + CT(var) + Tag(16)
+            int    totalLen = 4 + 1 + 1 + KeyEncSaltSize + KeyEncNonceSize + ciphertext.Length + KeyEncTagSize;
+            byte[] packet   = new byte[totalLen];
+            int    idx      = 0;
+
+            Buffer.BlockCopy(KeyEncMagic, 0, packet, idx, 4);              idx += 4;
+            packet[idx++] = KeyEncVersion;
+            packet[idx++] = modeFlag;
+            Buffer.BlockCopy(salt,        0, packet, idx, KeyEncSaltSize);  idx += KeyEncSaltSize;
+            Buffer.BlockCopy(nonce,       0, packet, idx, KeyEncNonceSize); idx += KeyEncNonceSize;
+            Buffer.BlockCopy(ciphertext,  0, packet, idx, ciphertext.Length); idx += ciphertext.Length;
+            Buffer.BlockCopy(tag,         0, packet, idx, KeyEncTagSize);
+
+            CryptographicOperations.ZeroMemory(ciphertext);
+            CryptographicOperations.ZeroMemory(tag);
+            CryptographicOperations.ZeroMemory(salt);
+            CryptographicOperations.ZeroMemory(nonce);
+
+            return packet;
+        }
+
+        /// <summary>
+        /// Reads a .keyenc byte array and returns the four decrypted key parts.
+        /// </summary>
+        /// <param name="data">Raw bytes read from a .keyenc file.</param>
+        /// <param name="masterPassword">
+        ///   Required for Vault-mode files (mode byte == 0x01).
+        ///   Pass null or empty for Token-mode files.
+        /// </param>
+        /// <returns>Tuple of (k1, k2, k3, k4) strings.</returns>
+        /// <exception cref="InvalidDataException">File is corrupt or has wrong magic/version.</exception>
+        /// <exception cref="CryptographicException">Authentication failed (wrong password or tampered file).</exception>
+        public static (string k1, string k2, string k3, string k4) ImportKeys(
+            byte[] data, string? masterPassword)
+        {
+            // Minimum size: 4+1+1+16+12+16 = 50 bytes (zero-length ciphertext is technically valid)
+            const int MinSize = 4 + 1 + 1 + KeyEncSaltSize + KeyEncNonceSize + KeyEncTagSize;
+            if (data == null || data.Length < MinSize)
+                throw new InvalidDataException("Data is too short to be a valid .keyenc file.");
+
+            // Validate magic
+            for (int i = 0; i < 4; i++)
+            {
+                if (data[i] != KeyEncMagic[i])
+                    throw new InvalidDataException("Not a valid .keyenc file (bad magic).");
+            }
+
+            int  idx         = 4;
+            byte fileVersion = data[idx++];
+            byte modeFlag    = data[idx++];
+
+            if (fileVersion != KeyEncVersion)
+                throw new InvalidDataException($"Unsupported .keyenc version: 0x{fileVersion:X2}.");
+            if (modeFlag != KeyEncModeToken && modeFlag != KeyEncModeVault)
+                throw new InvalidDataException($"Unknown mode flag: 0x{modeFlag:X2}.");
+
+            byte[] salt  = new byte[KeyEncSaltSize];
+            byte[] nonce = new byte[KeyEncNonceSize];
+            Buffer.BlockCopy(data, idx, salt,  0, KeyEncSaltSize);  idx += KeyEncSaltSize;
+            Buffer.BlockCopy(data, idx, nonce, 0, KeyEncNonceSize); idx += KeyEncNonceSize;
+
+            int ctLen = data.Length - idx - KeyEncTagSize;
+            if (ctLen < 0)
+                throw new InvalidDataException("Data is malformed (negative ciphertext length).");
+
+            byte[] ciphertext = new byte[ctLen];
+            byte[] tag        = new byte[KeyEncTagSize];
+            Buffer.BlockCopy(data, idx,        ciphertext, 0, ctLen);       idx += ctLen;
+            Buffer.BlockCopy(data, idx,        tag,        0, KeyEncTagSize);
+
+            string password   = modeFlag == KeyEncModeVault ? (masterPassword ?? string.Empty) : TokenPassword;
+            int    iterations = modeFlag == KeyEncModeVault ? VaultIterations : TokenIterations;
+
+            byte[] key       = DeriveAesKeyFromPassphrase(password, salt, iterations);
+            byte[] plaintext = new byte[ctLen];
+
+            try
+            {
+                using var aesGcm = new AesGcm(key, KeyEncTagSize);
+                aesGcm.Decrypt(
+                    nonce:          nonce,
+                    ciphertext:     ciphertext,
+                    tag:            tag,
+                    plaintext:      plaintext,
+                    associatedData: null
+                );
+
+                string   joined = Encoding.UTF8.GetString(plaintext);
+                string[] parts  = joined.Split('\n');
+
+                string k1 = parts.Length > 0 ? parts[0] : "";
+                string k2 = parts.Length > 1 ? parts[1] : "";
+                string k3 = parts.Length > 2 ? parts[2] : "";
+                string k4 = parts.Length > 3 ? parts[3] : "";
+
+                return (k1, k2, k3, k4);
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(key);
+                CryptographicOperations.ZeroMemory(plaintext);
+                Array.Clear(ciphertext, 0, ciphertext.Length);
+                Array.Clear(tag,        0, tag.Length);
+                CryptographicOperations.ZeroMemory(salt);
+                CryptographicOperations.ZeroMemory(nonce);
+            }
+        }
     }
 }

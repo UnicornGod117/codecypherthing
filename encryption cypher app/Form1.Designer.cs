@@ -345,7 +345,7 @@
             VersionNumber.Name = "VersionNumber";
             VersionNumber.Size = new Size(99, 25);
             VersionNumber.TabIndex = 27;
-            VersionNumber.Text = "Version 3.1";
+            VersionNumber.Text = "Version 3.4";
             // 
             // Form1
             // 
