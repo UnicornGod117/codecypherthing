@@ -80,7 +80,7 @@
             // 
             // keybox2
             // 
-            keybox2.Location = new Point(274, 187);
+            keybox2.Location = new Point(274, 227);
             keybox2.Name = "keybox2";
             keybox2.Size = new Size(467, 31);
             keybox2.TabIndex = 2;
@@ -90,7 +90,7 @@
             // 
             keylabel2.AutoSize = true;
             keylabel2.ForeColor = SystemColors.Control;
-            keylabel2.Location = new Point(470, 159);
+            keylabel2.Location = new Point(470, 199);
             keylabel2.Name = "keylabel2";
             keylabel2.Size = new Size(55, 25);
             keylabel2.TabIndex = 3;
@@ -100,7 +100,7 @@
             // Encryptbutton
             // 
             Encryptbutton.ForeColor = SystemColors.Desktop;
-            Encryptbutton.Location = new Point(180, 462);
+            Encryptbutton.Location = new Point(180, 502);
             Encryptbutton.Name = "Encryptbutton";
             Encryptbutton.Size = new Size(129, 34);
             Encryptbutton.TabIndex = 4;
@@ -111,7 +111,7 @@
             // Decryptbutton
             // 
             Decryptbutton.ForeColor = SystemColors.Desktop;
-            Decryptbutton.Location = new Point(1159, 462);
+            Decryptbutton.Location = new Point(1159, 502);
             Decryptbutton.Name = "Decryptbutton";
             Decryptbutton.Size = new Size(132, 34);
             Decryptbutton.TabIndex = 5;
@@ -123,7 +123,7 @@
             // 
             Decryptlabel.AutoSize = true;
             Decryptlabel.ForeColor = SystemColors.Control;
-            Decryptlabel.Location = new Point(1052, 312);
+            Decryptlabel.Location = new Point(1052, 352);
             Decryptlabel.Name = "Decryptlabel";
             Decryptlabel.Size = new Size(375, 25);
             Decryptlabel.TabIndex = 6;
@@ -133,7 +133,7 @@
             // 
             Encryptlabel.AutoSize = true;
             Encryptlabel.ForeColor = SystemColors.Control;
-            Encryptlabel.Location = new Point(81, 312);
+            Encryptlabel.Location = new Point(81, 352);
             Encryptlabel.Name = "Encryptlabel";
             Encryptlabel.Size = new Size(371, 25);
             Encryptlabel.TabIndex = 7;
@@ -141,7 +141,7 @@
             // 
             // TextBoxDecryptionInput
             // 
-            TextBoxDecryptionInput.Location = new Point(1052, 353);
+            TextBoxDecryptionInput.Location = new Point(1052, 393);
             TextBoxDecryptionInput.Multiline = true;
             TextBoxDecryptionInput.Name = "TextBoxDecryptionInput";
             TextBoxDecryptionInput.Size = new Size(359, 76);
@@ -150,7 +150,7 @@
             // 
             // TextboxEncryptioninput
             // 
-            TextboxEncryptioninput.Location = new Point(81, 353);
+            TextboxEncryptioninput.Location = new Point(81, 393);
             TextboxEncryptioninput.Multiline = true;
             TextboxEncryptioninput.Name = "TextboxEncryptioninput";
             TextboxEncryptioninput.Size = new Size(359, 76);
@@ -159,7 +159,7 @@
             // 
             // TextBoxDecryptOutput
             // 
-            TextBoxDecryptOutput.Location = new Point(1052, 562);
+            TextBoxDecryptOutput.Location = new Point(1052, 602);
             TextBoxDecryptOutput.Multiline = true;
             TextBoxDecryptOutput.Name = "TextBoxDecryptOutput";
             TextBoxDecryptOutput.ReadOnly = true;
@@ -169,7 +169,7 @@
             // 
             // TextBoxEncryptOutput
             // 
-            TextBoxEncryptOutput.Location = new Point(81, 568);
+            TextBoxEncryptOutput.Location = new Point(81, 608);
             TextBoxEncryptOutput.Multiline = true;
             TextBoxEncryptOutput.Name = "TextBoxEncryptOutput";
             TextBoxEncryptOutput.ReadOnly = true;
@@ -180,7 +180,7 @@
             // 
             decryptedlabel.AutoSize = true;
             decryptedlabel.ForeColor = SystemColors.Control;
-            decryptedlabel.Location = new Point(1159, 533);
+            decryptedlabel.Location = new Point(1159, 573);
             decryptedlabel.Name = "decryptedlabel";
             decryptedlabel.Size = new Size(132, 25);
             decryptedlabel.TabIndex = 12;
@@ -190,7 +190,7 @@
             // 
             Encryptedlabel.AutoSize = true;
             Encryptedlabel.ForeColor = SystemColors.Control;
-            Encryptedlabel.Location = new Point(180, 533);
+            Encryptedlabel.Location = new Point(180, 573);
             Encryptedlabel.Name = "Encryptedlabel";
             Encryptedlabel.Size = new Size(129, 25);
             Encryptedlabel.TabIndex = 13;
@@ -213,7 +213,7 @@
             // 
             invalidformatlabelkey2.AutoSize = true;
             invalidformatlabelkey2.ForeColor = Color.Red;
-            invalidformatlabelkey2.Location = new Point(299, 221);
+            invalidformatlabelkey2.Location = new Point(299, 261);
             invalidformatlabelkey2.Name = "invalidformatlabelkey2";
             invalidformatlabelkey2.Size = new Size(393, 25);
             invalidformatlabelkey2.TabIndex = 15;
@@ -224,7 +224,7 @@
             // encryptioncopybutton
             // 
             encryptioncopybutton.ForeColor = SystemColors.Desktop;
-            encryptioncopybutton.Location = new Point(446, 783);
+            encryptioncopybutton.Location = new Point(446, 823);
             encryptioncopybutton.Name = "encryptioncopybutton";
             encryptioncopybutton.Size = new Size(112, 34);
             encryptioncopybutton.TabIndex = 16;
@@ -235,7 +235,7 @@
             // decryptionpastebutton
             // 
             decryptionpastebutton.ForeColor = SystemColors.Desktop;
-            decryptionpastebutton.Location = new Point(916, 349);
+            decryptionpastebutton.Location = new Point(916, 389);
             decryptionpastebutton.Name = "decryptionpastebutton";
             decryptionpastebutton.Size = new Size(112, 34);
             decryptionpastebutton.TabIndex = 17;
@@ -247,7 +247,7 @@
             // 
             pasteerror.AutoSize = true;
             pasteerror.ForeColor = Color.Red;
-            pasteerror.Location = new Point(894, 388);
+            pasteerror.Location = new Point(894, 428);
             pasteerror.Name = "pasteerror";
             pasteerror.Size = new Size(152, 25);
             pasteerror.TabIndex = 18;
@@ -258,7 +258,7 @@
             // 
             keylabel4.AutoSize = true;
             keylabel4.ForeColor = SystemColors.Control;
-            keylabel4.Location = new Point(977, 159);
+            keylabel4.Location = new Point(977, 199);
             keylabel4.Name = "keylabel4";
             keylabel4.Size = new Size(55, 25);
             keylabel4.TabIndex = 22;
@@ -267,7 +267,7 @@
             // 
             // keybox4
             // 
-            keybox4.Location = new Point(781, 187);
+            keybox4.Location = new Point(781, 227);
             keybox4.Name = "keybox4";
             keybox4.Size = new Size(467, 31);
             keybox4.TabIndex = 21;
@@ -296,7 +296,7 @@
             // 
             invalidformatlabelkey4.AutoSize = true;
             invalidformatlabelkey4.ForeColor = Color.Red;
-            invalidformatlabelkey4.Location = new Point(818, 221);
+            invalidformatlabelkey4.Location = new Point(818, 261);
             invalidformatlabelkey4.Name = "invalidformatlabelkey4";
             invalidformatlabelkey4.Size = new Size(393, 25);
             invalidformatlabelkey4.TabIndex = 24;
@@ -317,7 +317,7 @@
             // gotoform2button
             // 
             gotoform2button.ForeColor = SystemColors.Desktop;
-            gotoform2button.Location = new Point(637, 487);
+            gotoform2button.Location = new Point(637, 527);
             gotoform2button.Name = "gotoform2button";
             gotoform2button.Size = new Size(221, 71);
             gotoform2button.TabIndex = 25;
@@ -329,7 +329,7 @@
             // 
             authenticationlabel.AutoSize = true;
             authenticationlabel.ForeColor = Color.Chartreuse;
-            authenticationlabel.Location = new Point(1118, 499);
+            authenticationlabel.Location = new Point(1118, 539);
             authenticationlabel.Name = "authenticationlabel";
             authenticationlabel.Size = new Size(211, 25);
             authenticationlabel.TabIndex = 26;

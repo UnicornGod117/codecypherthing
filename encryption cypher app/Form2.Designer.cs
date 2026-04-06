@@ -52,11 +52,11 @@
             // 
             form2titlelabel.AutoSize = true;
             form2titlelabel.ForeColor = SystemColors.Control;
-            form2titlelabel.Location = new Point(408, 9);
+            form2titlelabel.Location = new Point(400, 20);
             form2titlelabel.Name = "form2titlelabel";
             form2titlelabel.Size = new Size(238, 25);
             form2titlelabel.TabIndex = 0;
-            form2titlelabel.Text = "Random Number Generator!";
+            form2titlelabel.Text = "Key Generation & File Tools";
             // 
             // form2close
             // 
@@ -72,7 +72,7 @@
             //
             labelTotalChars.AutoSize = true;
             labelTotalChars.ForeColor = SystemColors.Control;
-            labelTotalChars.Location = new Point(82, 62);
+            labelTotalChars.Location = new Point(80, 80);
             labelTotalChars.Name = "labelTotalChars";
             labelTotalChars.Size = new Size(200, 25);
             labelTotalChars.TabIndex = 2;
@@ -80,7 +80,7 @@
             //
             // textboxTotalChars
             //
-            textboxTotalChars.Location = new Point(82, 90);
+            textboxTotalChars.Location = new Point(80, 110);
             textboxTotalChars.Name = "textboxTotalChars";
             textboxTotalChars.Size = new Size(120, 31);
             textboxTotalChars.TabIndex = 3;
@@ -90,7 +90,7 @@
             //
             labelNumNumbers.AutoSize = true;
             labelNumNumbers.ForeColor = SystemColors.Control;
-            labelNumNumbers.Location = new Point(82, 140);
+            labelNumNumbers.Location = new Point(80, 160);
             labelNumNumbers.Name = "labelNumNumbers";
             labelNumNumbers.Size = new Size(180, 25);
             labelNumNumbers.TabIndex = 4;
@@ -98,7 +98,7 @@
             //
             // textboxNumNumbers
             //
-            textboxNumNumbers.Location = new Point(82, 168);
+            textboxNumNumbers.Location = new Point(80, 190);
             textboxNumNumbers.Name = "textboxNumNumbers";
             textboxNumNumbers.Size = new Size(120, 31);
             textboxNumNumbers.TabIndex = 5;
@@ -108,7 +108,7 @@
             //
             labelNumSpecial.AutoSize = true;
             labelNumSpecial.ForeColor = SystemColors.Control;
-            labelNumSpecial.Location = new Point(82, 218);
+            labelNumSpecial.Location = new Point(80, 240);
             labelNumSpecial.Name = "labelNumSpecial";
             labelNumSpecial.Size = new Size(240, 25);
             labelNumSpecial.TabIndex = 6;
@@ -116,7 +116,7 @@
             //
             // textboxNumSpecial
             //
-            textboxNumSpecial.Location = new Point(82, 246);
+            textboxNumSpecial.Location = new Point(80, 270);
             textboxNumSpecial.Name = "textboxNumSpecial";
             textboxNumSpecial.Size = new Size(120, 31);
             textboxNumSpecial.TabIndex = 7;
@@ -124,7 +124,7 @@
             //
             // randomnisekeyvaluebutton
             //
-            randomnisekeyvaluebutton.Location = new Point(82, 300);
+            randomnisekeyvaluebutton.Location = new Point(80, 320);
             randomnisekeyvaluebutton.Name = "randomnisekeyvaluebutton";
             randomnisekeyvaluebutton.Size = new Size(120, 34);
             randomnisekeyvaluebutton.TabIndex = 8;
@@ -136,7 +136,7 @@
             //
             randomiserror.AutoSize = true;
             randomiserror.ForeColor = Color.Red;
-            randomiserror.Location = new Point(82, 345);
+            randomiserror.Location = new Point(80, 370);
             randomiserror.Name = "randomiserror";
             randomiserror.Size = new Size(309, 25);
             randomiserror.TabIndex = 9;
@@ -147,7 +147,7 @@
             //
             hideKeysCheckbox.AutoSize = true;
             hideKeysCheckbox.ForeColor = SystemColors.ButtonFace;
-            hideKeysCheckbox.Location = new Point(891, 139);
+            hideKeysCheckbox.Location = new Point(450, 320);
             hideKeysCheckbox.Name = "hideKeysCheckbox";
             hideKeysCheckbox.Size = new Size(116, 29);
             hideKeysCheckbox.TabIndex = 10;
@@ -157,7 +157,7 @@
             // 
             // EncryptFileButton
             // 
-            EncryptFileButton.Location = new Point(82, 355);
+            EncryptFileButton.Location = new Point(450, 80);
             EncryptFileButton.Name = "EncryptFileButton";
             EncryptFileButton.Size = new Size(139, 38);
             EncryptFileButton.TabIndex = 11;
@@ -167,7 +167,7 @@
             // 
             // DecryptFileButton
             // 
-            DecryptFileButton.Location = new Point(82, 413);
+            DecryptFileButton.Location = new Point(450, 140);
             DecryptFileButton.Name = "DecryptFileButton";
             DecryptFileButton.Size = new Size(139, 38);
             DecryptFileButton.TabIndex = 12;
@@ -177,7 +177,7 @@
             //
             // ExportKeysButton
             //
-            ExportKeysButton.Location = new Point(82, 471);
+            ExportKeysButton.Location = new Point(450, 200);
             ExportKeysButton.Name = "ExportKeysButton";
             ExportKeysButton.Size = new Size(139, 38);
             ExportKeysButton.TabIndex = 14;
@@ -187,7 +187,7 @@
             //
             // ImportKeysButton
             //
-            ImportKeysButton.Location = new Point(82, 529);
+            ImportKeysButton.Location = new Point(450, 260);
             ImportKeysButton.Name = "ImportKeysButton";
             ImportKeysButton.Size = new Size(139, 38);
             ImportKeysButton.TabIndex = 15;
@@ -208,7 +208,7 @@
             // 
             // fileProgressBar
             //
-            fileProgressBar.Location = new Point(270, 355);
+            fileProgressBar.Location = new Point(450, 370);
             fileProgressBar.Name = "fileProgressBar";
             fileProgressBar.Size = new Size(580, 38);
             fileProgressBar.TabIndex = 16;
@@ -218,7 +218,7 @@
             //
             statusLabel.AutoSize = true;
             statusLabel.ForeColor = SystemColors.Control;
-            statusLabel.Location = new Point(270, 413);
+            statusLabel.Location = new Point(450, 420);
             statusLabel.Name = "statusLabel";
             statusLabel.Size = new Size(0, 25);
             statusLabel.TabIndex = 17;
