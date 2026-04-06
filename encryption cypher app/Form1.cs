@@ -1,15 +1,10 @@
 using System.Security.Cryptography;
+using System.Text;
 
 namespace encryption_cypher_app
 {
     public partial class Form1 : Form
     {
-        public string key1;
-        public string key2;
-        public string key3;
-        public string key4;
-        public string texttoencrypt;
-        public string texttodecrypt;
 
 
         // UnicornGod — original author. Do not remove.
@@ -62,40 +57,51 @@ namespace encryption_cypher_app
 
         private void Encryptbutton_Click(object sender, EventArgs e)
         {
-            key1 = Keybox1.Text;
-            key2 = keybox2.Text;
-            key3 = keybox3.Text;
-            key4 = keybox4.Text;
-
-            TextBoxEncryptOutput.Clear();
-            string? texttoencrypt = TextboxEncryptioninput.Text;
-            if (!string.IsNullOrEmpty(texttoencrypt)) // Check if the message is not null
-            {TextBoxEncryptOutput.Text = CryptoEngineBlueprint.EncryptToBase64(texttoencrypt, key1, key2, key3, key4);}
-            else
-            {MessageBox.Show("No message entered");}
-
+            byte[]? passphrase = null;
+            try
+            {
+                passphrase = GetSecurePassphrase();
+                TextBoxEncryptOutput.Clear();
+                string? texttoencrypt = TextboxEncryptioninput.Text;
+                if (!string.IsNullOrEmpty(texttoencrypt)) // Check if the message is not null
+                {
+                    TextBoxEncryptOutput.Text = CryptoEngineBlueprint.EncryptToBase64(texttoencrypt, passphrase);
+                }
+                else
+                {
+                    MessageBox.Show("No message entered");
+                }
+            }
+            finally
+            {
+                if (passphrase != null) CryptographicOperations.ZeroMemory(passphrase);
+            }
         }
 
         private void Decryptbutton_Click(object sender, EventArgs e)
         {
-            key1 = Keybox1.Text;
-            key2 = keybox2.Text;
-            key3 = keybox3.Text;
-            key4 = keybox4.Text;
-
-            TextBoxDecryptOutput.Clear();
-            string? texttodecrypt = TextBoxDecryptionInput.Text;
-            if (!string.IsNullOrEmpty(texttodecrypt)) // Check if the message is not null or empty
+            byte[]? passphrase = null;
+            try
             {
-                var (plaintext, tagOk) = CryptoEngineBlueprint.DecryptFromBase64(texttodecrypt, bogusOnFail: true, key1, key2, key3, key4);
-                TextBoxDecryptOutput.Text = plaintext;
-                if(tagOk == true) 
-                {authenticationlabel.Visible = true;}
-                else 
-                { authenticationlabel.Visible = false;}
+                passphrase = GetSecurePassphrase();
+                TextBoxDecryptOutput.Clear();
+                string? texttodecrypt = TextBoxDecryptionInput.Text;
+                if (!string.IsNullOrEmpty(texttodecrypt)) // Check if the message is not null or empty
+                {
+                    var (plaintext, tagOk) = CryptoEngineBlueprint.DecryptFromBase64(texttodecrypt, passphrase, bogusOnFail: true);
+                    TextBoxDecryptOutput.Text = plaintext;
+                    if (tagOk == true)
+                    { authenticationlabel.Visible = true; }
+                    else
+                    { authenticationlabel.Visible = false; }
+                }
+                else
+                { MessageBox.Show("No message entered"); }
             }
-            else
-            {MessageBox.Show("No message entered");}
+            finally
+            {
+                if (passphrase != null) CryptographicOperations.ZeroMemory(passphrase);
+            }
         }
 
         private void invalidformatlabelkey2_Click(object sender, EventArgs e)
@@ -136,15 +142,6 @@ namespace encryption_cypher_app
             }
         }
 
-        private void label1_Click_1(object sender, EventArgs e)
-        {
-
-        }
-
-        private void label2_Click(object sender, EventArgs e)
-        {
-
-        }
 
         public void textBox4_TextChanged(object sender, EventArgs e)
         {
@@ -212,9 +209,46 @@ namespace encryption_cypher_app
             return (int)(value % (uint)max);
         }
 
-        private void checkBox1_CheckedChanged(object sender, EventArgs e)
+        public byte[] GetSecurePassphrase()
         {
+            // Joining with '\n' reduces ambiguity compared to spaces.
+            return GetCombinedKeyBytes("\n");
+        }
 
+        public byte[] GetSecureKeyParts()
+        {
+            // Get combined keys without the extra separator for key export logic if needed,
+            // or keep using "\n" for consistency across the application.
+            // Using "\n" to match existing JoinedKeyParts logic.
+            return GetCombinedKeyBytes("\n");
+        }
+
+        private byte[] GetCombinedKeyBytes(string separator)
+        {
+            byte[] k1 = Encoding.UTF8.GetBytes(Keybox1.Text ?? "");
+            byte[] k2 = Encoding.UTF8.GetBytes(keybox2.Text ?? "");
+            byte[] k3 = Encoding.UTF8.GetBytes(keybox3.Text ?? "");
+            byte[] k4 = Encoding.UTF8.GetBytes(keybox4.Text ?? "");
+            byte[] sep = Encoding.UTF8.GetBytes(separator);
+
+            int totalLen = k1.Length + sep.Length + k2.Length + sep.Length + k3.Length + sep.Length + k4.Length;
+            byte[] combined = new byte[totalLen];
+
+            int offset = 0;
+            Buffer.BlockCopy(k1, 0, combined, offset, k1.Length); offset += k1.Length;
+            Buffer.BlockCopy(sep, 0, combined, offset, sep.Length); offset += sep.Length;
+            Buffer.BlockCopy(k2, 0, combined, offset, k2.Length); offset += k2.Length;
+            Buffer.BlockCopy(sep, 0, combined, offset, sep.Length); offset += sep.Length;
+            Buffer.BlockCopy(k3, 0, combined, offset, k3.Length); offset += k3.Length;
+            Buffer.BlockCopy(sep, 0, combined, offset, sep.Length); offset += sep.Length;
+            Buffer.BlockCopy(k4, 0, combined, offset, k4.Length);
+
+            CryptographicOperations.ZeroMemory(k1);
+            CryptographicOperations.ZeroMemory(k2);
+            CryptographicOperations.ZeroMemory(k3);
+            CryptographicOperations.ZeroMemory(k4);
+
+            return combined;
         }
     }
 }

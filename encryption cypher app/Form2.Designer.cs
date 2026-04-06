@@ -44,6 +44,8 @@
             author = new Label();
             ExportKeysButton = new Button();
             ImportKeysButton = new Button();
+            fileProgressBar = new ProgressBar();
+            statusLabel = new Label();
             SuspendLayout();
             // 
             // form2titlelabel
@@ -204,12 +206,32 @@
             author.Text = "Made by Unicorn God";
             author.Click += label1_Click;
             // 
+            // fileProgressBar
+            //
+            fileProgressBar.Location = new Point(270, 355);
+            fileProgressBar.Name = "fileProgressBar";
+            fileProgressBar.Size = new Size(580, 38);
+            fileProgressBar.TabIndex = 16;
+            fileProgressBar.Visible = false;
+            //
+            // statusLabel
+            //
+            statusLabel.AutoSize = true;
+            statusLabel.ForeColor = SystemColors.Control;
+            statusLabel.Location = new Point(270, 413);
+            statusLabel.Name = "statusLabel";
+            statusLabel.Size = new Size(0, 25);
+            statusLabel.TabIndex = 17;
+            statusLabel.Visible = false;
+            //
             // Form2
             // 
             AutoScaleDimensions = new SizeF(10F, 25F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = SystemColors.Desktop;
             ClientSize = new Size(1154, 725);
+            Controls.Add(statusLabel);
+            Controls.Add(fileProgressBar);
             Controls.Add(author);
             Controls.Add(ImportKeysButton);
             Controls.Add(ExportKeysButton);
@@ -250,6 +272,8 @@
         private Button DecryptFileButton;
         private Button ExportKeysButton;
         private Button ImportKeysButton;
+        private ProgressBar fileProgressBar;
+        private Label statusLabel;
         private Label author;
     }
 }
