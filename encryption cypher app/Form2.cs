@@ -1,5 +1,7 @@
 ﻿using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Windows.Forms;
 
 namespace encryption_cypher_app
@@ -50,11 +52,12 @@ namespace encryption_cypher_app
             form1Instance.keybox4.UseSystemPasswordChar = hide;
         }
 
-        private void EncryptFileButton_Click(object sender, EventArgs e)
+        private async void EncryptFileButton_Click(object sender, EventArgs e)
         {
+            byte[]? passphrase = null;
             try
             {
-                string passphrase = GetPassphraseFromForm1();
+                passphrase = GetPassphraseFromForm1();
 
                 using var ofd = new OpenFileDialog
                 {
@@ -80,22 +83,49 @@ namespace encryption_cypher_app
 
                 string outPath = sfd.FileName;
 
-                // File encryption: strict and durable
-                CryptoEngineBlueprint.EncryptFile(inPath, outPath, passphrase);
+                ToggleUI(false);
+                long fileLen = new FileInfo(inPath).Length;
+                fileProgressBar.Maximum = 100;
+                fileProgressBar.Value = 0;
+                fileProgressBar.Visible = true;
+                statusLabel.Text = "Encrypting...";
+                statusLabel.Visible = true;
 
-                MessageBox.Show("File encrypted successfully.", "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                var progress = new Progress<long>(bytes =>
+                {
+                    if (fileLen > 0)
+                        fileProgressBar.Value = (int)(100 * bytes / fileLen);
+                });
+
+                // File encryption: strict and durable
+                await Task.Run(() => CryptoEngineBlueprint.EncryptFile(inPath, outPath, passphrase, progress: progress));
+
+                if (!this.IsDisposed)
+                    MessageBox.Show("File encrypted successfully.", "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Encryption failed:\n" + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                if (!this.IsDisposed)
+                    MessageBox.Show("Encryption failed:\n" + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                if (passphrase != null) CryptographicOperations.ZeroMemory(passphrase);
+                if (!this.IsDisposed)
+                {
+                    ToggleUI(true);
+                    fileProgressBar.Visible = false;
+                    statusLabel.Visible = false;
+                }
             }
         }
 
-        private void DecryptFileButton_Click(object sender, EventArgs e)
+        private async void DecryptFileButton_Click(object sender, EventArgs e)
         {
+            byte[]? passphrase = null;
             try
             {
-                string passphrase = GetPassphraseFromForm1();
+                passphrase = GetPassphraseFromForm1();
 
                 using var ofd = new OpenFileDialog
                 {
@@ -121,31 +151,60 @@ namespace encryption_cypher_app
 
                 string outPath = sfd.FileName;
 
-                bool ok = CryptoEngineBlueprint.DecryptFile(inEncPath, outPath, passphrase);
+                ToggleUI(false);
+                long fileLen = new FileInfo(inEncPath).Length; // Note: .enc is slightly larger than original but close enough for progress
+                fileProgressBar.Maximum = 100;
+                fileProgressBar.Value = 0;
+                fileProgressBar.Visible = true;
+                statusLabel.Text = "Decrypting...";
+                statusLabel.Visible = true;
 
-                if (ok)
+                var progress = new Progress<long>(bytes =>
                 {
-                    MessageBox.Show("File decrypted successfully.", "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-                else
+                    if (fileLen > 0)
+                        fileProgressBar.Value = Math.Min(100, (int)(100 * bytes / fileLen));
+                });
+
+                bool ok = await Task.Run(() => CryptoEngineBlueprint.DecryptFile(inEncPath, outPath, passphrase, progress: progress));
+
+                if (!this.IsDisposed)
                 {
-                    // If auth fails, DecryptFile returns false and should not write a valid output.
-                    MessageBox.Show("Decryption failed: wrong keys OR file was tampered with.", "Auth failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    if (ok)
+                    {
+                        MessageBox.Show("File decrypted successfully.", "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    else
+                    {
+                        // If auth fails, DecryptFile returns false and should not write a valid output.
+                        MessageBox.Show("Decryption failed: wrong keys OR file was tampered with.", "Auth failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Decryption failed:\n" + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                if (!this.IsDisposed)
+                    MessageBox.Show("Decryption failed:\n" + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                if (passphrase != null) CryptographicOperations.ZeroMemory(passphrase);
+                if (!this.IsDisposed)
+                {
+                    ToggleUI(true);
+                    fileProgressBar.Visible = false;
+                    statusLabel.Visible = false;
+                }
             }
         }
 
         private void ExportKeysButton_Click(object sender, EventArgs e)
         {
+            byte[]? keyParts = null;
+            byte[]? masterPassBytes = null;
             try
             {
                 // Step 1: prompt for optional master password
-                string? masterPassword = null;
-                bool    useVaultMode   = false;
+                bool useVaultMode = false;
 
                 using var prompt = new PasswordPromptDialog(
                     "Enter a master password to protect this key file (Vault Mode).\n" +
@@ -159,8 +218,8 @@ namespace encryption_cypher_app
 
                 if (promptResult == DialogResult.OK)
                 {
-                    masterPassword = prompt.Password;
-                    useVaultMode   = true;
+                    masterPassBytes = Encoding.UTF8.GetBytes(prompt.Password);
+                    useVaultMode = true;
                 }
                 else // DialogResult.No == Skip → Token Mode
                 {
@@ -177,8 +236,7 @@ namespace encryption_cypher_app
 
                     if (warn != DialogResult.Yes) return;
 
-                    useVaultMode   = false;
-                    masterPassword = null;
+                    useVaultMode = false;
                 }
 
                 // Step 2: read keys from Form1
@@ -189,10 +247,7 @@ namespace encryption_cypher_app
                     return;
                 }
 
-                string k1 = form1.Keybox1.Text ?? "";
-                string k2 = form1.keybox2.Text ?? "";
-                string k3 = form1.keybox3.Text ?? "";
-                string k4 = form1.keybox4.Text ?? "";
+                keyParts = form1.GetSecureKeyParts();
 
                 // Step 3: choose save location
                 using var sfd = new SaveFileDialog
@@ -210,8 +265,8 @@ namespace encryption_cypher_app
                 AppSettings.SetLastUsedDirectory(Path.GetDirectoryName(sfd.FileName));
 
                 // Step 4: export and write
-                int    mode       = useVaultMode ? 1 : 0;
-                byte[] keyEncData = CryptoEngineBlueprint.ExportKeys(k1, k2, k3, k4, mode, masterPassword);
+                int mode = useVaultMode ? 1 : 0;
+                byte[] keyEncData = CryptoEngineBlueprint.ExportKeys(keyParts, mode, masterPassBytes);
                 File.WriteAllBytes(sfd.FileName, keyEncData);
                 Array.Clear(keyEncData, 0, keyEncData.Length);
 
@@ -226,10 +281,16 @@ namespace encryption_cypher_app
                 MessageBox.Show("Export failed:\n" + ex.Message, "Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+            finally
+            {
+                if (keyParts != null) CryptographicOperations.ZeroMemory(keyParts);
+                if (masterPassBytes != null) CryptographicOperations.ZeroMemory(masterPassBytes);
+            }
         }
 
         private void ImportKeysButton_Click(object sender, EventArgs e)
         {
+            byte[]? masterPassBytes = null;
             try
             {
                 // Step 1: open .keyenc file
@@ -256,8 +317,7 @@ namespace encryption_cypher_app
                     return;
                 }
 
-                byte   modeFlag      = data[5];
-                string? masterPassword = null;
+                byte modeFlag = data[5];
 
                 if (modeFlag == 0x01) // Vault mode — ask for password
                 {
@@ -271,11 +331,11 @@ namespace encryption_cypher_app
                         return;
                     }
 
-                    masterPassword = prompt.Password;
+                    masterPassBytes = Encoding.UTF8.GetBytes(prompt.Password);
                 }
 
                 // Step 3: decrypt
-                var (k1, k2, k3, k4) = CryptoEngineBlueprint.ImportKeys(data, masterPassword);
+                var (k1, k2, k3, k4) = CryptoEngineBlueprint.ImportKeys(data, masterPassBytes);
                 Array.Clear(data, 0, data.Length);
 
                 // Step 4: get Form1 and enable masking BEFORE populating key boxes
@@ -320,20 +380,29 @@ namespace encryption_cypher_app
                 MessageBox.Show("Import failed:\n" + ex.Message,
                     "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+            finally
+            {
+                if (masterPassBytes != null) CryptographicOperations.ZeroMemory(masterPassBytes);
+            }
         }
 
-        private string GetPassphraseFromForm1()
+        private byte[] GetPassphraseFromForm1()
         {
             Form1 form1 = Application.OpenForms.OfType<Form1>().FirstOrDefault();
             if (form1 == null) throw new InvalidOperationException("Form1 is not open.");
 
-            // Same separator as JoinKeyParts(): "\n"
-            return string.Join("\n",
-                form1.Keybox1.Text ?? "",
-                form1.keybox2.Text ?? "",
-                form1.keybox3.Text ?? "",
-                form1.keybox4.Text ?? ""
-            );
+            return form1.GetSecurePassphrase();
+        }
+
+        private void ToggleUI(bool enabled)
+        {
+            EncryptFileButton.Enabled = enabled;
+            DecryptFileButton.Enabled = enabled;
+            ExportKeysButton.Enabled = enabled;
+            ImportKeysButton.Enabled = enabled;
+            randomnisekeyvaluebutton.Enabled = enabled;
+            form2close.Enabled = enabled;
+            hideKeysCheckbox.Enabled = enabled;
         }
 
         private void label1_Click(object sender, EventArgs e)

@@ -1,6 +1,6 @@
 # EncSypher
 
-**Version 3.4**
+**Version 3.5**
 
 A Windows desktop encryption tool built in C# (.NET 9). Encrypts and decrypts text and files using **AES-256-GCM** with a four-part passphrase key system.
 
