@@ -253,7 +253,6 @@
             pasteerror.TabIndex = 18;
             pasteerror.Text = "Nothing to paste!";
             pasteerror.Visible = false;
-            pasteerror.Click += label1_Click_1;
             // 
             // keylabel4
             // 
@@ -292,7 +291,6 @@
             keylabel3.TabIndex = 19;
             keylabel3.Text = "Key 3";
             keylabel3.TextAlign = ContentAlignment.TopRight;
-            keylabel3.Click += label2_Click;
             // 
             // invalidformatlabelkey4
             // 
@@ -345,7 +343,7 @@
             VersionNumber.Name = "VersionNumber";
             VersionNumber.Size = new Size(99, 25);
             VersionNumber.TabIndex = 27;
-            VersionNumber.Text = "Version 3.4";
+            VersionNumber.Text = "Version 3.5";
             // 
             // Form1
             // 

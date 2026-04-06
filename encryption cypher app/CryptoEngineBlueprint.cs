@@ -67,10 +67,10 @@ namespace encryption_cypher_app
         /// Encrypts UTF-8 plaintext using a user passphrase (any text),
         /// returning a Base64 packet that includes salt+nonce+tag.
         /// </summary>
-        public static string EncryptToBase64(string plaintextUtf8, string passphrase)
+        public static string EncryptToBase64(string plaintextUtf8, byte[] passphrase)
         {
             if (plaintextUtf8 is null) plaintextUtf8 = string.Empty;
-            if (passphrase is null) passphrase = string.Empty;
+            passphrase ??= Array.Empty<byte>();
 
             // Convert plaintext to bytes
             byte[] plaintext = Encoding.UTF8.GetBytes(plaintextUtf8);
@@ -103,7 +103,7 @@ namespace encryption_cypher_app
 
             try
             {
-                using var aesgcm = new AesGcm(key);
+                using var aesgcm = new AesGcm(key, TagSize);
 
                 // AAD binds the metadata to the ciphertext.
                 aesgcm.Encrypt(
@@ -142,10 +142,10 @@ namespace encryption_cypher_app
         ///  - bogusOnFail = false: returns ("", false)
         ///  - bogusOnFail = true : returns (bogusText, false) where bogusText is random/garbage
         /// </summary>
-        public static (string plaintextUtf8, bool tagOk) DecryptFromBase64(string base64, string passphrase, bool bogusOnFail = true)
+        public static (string plaintextUtf8, bool tagOk) DecryptFromBase64(string base64, byte[] passphrase, bool bogusOnFail = true)
         {
             if (base64 is null) return ("", false);
-            if (passphrase is null) passphrase = string.Empty;
+            passphrase ??= Array.Empty<byte>();
 
             byte[] packet;
             try
@@ -180,10 +180,9 @@ namespace encryption_cypher_app
 
             byte[] plaintext = new byte[ciphertext.Length];
 
-            bool tagOk = false;
             try
             {
-                using var aesgcm = new AesGcm(key);
+                using var aesgcm = new AesGcm(key, TagSize);
 
                 // If tag is wrong, this throws CryptographicException
                 aesgcm.Decrypt(
@@ -194,15 +193,12 @@ namespace encryption_cypher_app
                     associatedData: headerForAad
                 );
 
-                tagOk = true;
                 string text = Encoding.UTF8.GetString(plaintext);
                 return (text, true);
             }
             catch (CryptographicException)
             {
                 // Authentication failure: wrong key or tampered packet
-                tagOk = false;
-
                 if (!bogusOnFail)
                     return ("", false);
 
@@ -231,50 +227,22 @@ namespace encryption_cypher_app
             }
         }
 
-        /// <summary>
-        /// Convenience overload: lets you keep 4 UI boxes (words/strings),
-        /// but treat them as a single passphrase under the hood.
-        /// </summary>
-        public static string EncryptToBase64(string plaintextUtf8, params string[] keyParts)
-            => EncryptToBase64(plaintextUtf8, JoinKeyParts(keyParts));
-
-        /// <summary>
-        /// Convenience overload matching EncryptToBase64(params string[]).
-        /// </summary>
-        public static (string plaintextUtf8, bool tagOk) DecryptFromBase64(string base64, bool bogusOnFail, params string[] keyParts)
-            => DecryptFromBase64(base64, JoinKeyParts(keyParts), bogusOnFail);
-
         // --------------------------
         // Key derivation (PBKDF2-SHA256)
         // --------------------------
 
         // Key derivation authored by UnicornGod — PBKDF2-SHA256 tuned for human-key UX.
-        private static byte[] DeriveAesKeyFromPassphrase(string passphrase, byte[] salt, int iterations)
+        private static byte[] DeriveAesKeyFromPassphrase(byte[] passBytes, byte[] salt, int iterations)
         {
-            // Normalize to reduce weird Unicode edge-cases where visually identical strings differ.
-            // This is a usability+consistency measure, not a security guarantee.
-            string normalized = passphrase.Trim().Normalize(NormalizationForm.FormKC);
+            // PBKDF2-SHA256 -> 32 bytes for AES-256 key
+            using var pbkdf2 = new Rfc2898DeriveBytes(
+                password: passBytes,
+                salt: salt,
+                iterations: iterations,
+                hashAlgorithm: HashAlgorithmName.SHA256
+            );
 
-            // PBKDF2 takes bytes. UTF-8 is the standard choice.
-            byte[] passBytes = Encoding.UTF8.GetBytes(normalized);
-
-            try
-            {
-                // PBKDF2-SHA256 -> 32 bytes for AES-256 key
-                using var pbkdf2 = new Rfc2898DeriveBytes(
-                    password: passBytes,
-                    salt: salt,
-                    iterations: iterations,
-                    hashAlgorithm: HashAlgorithmName.SHA256
-                );
-
-                return pbkdf2.GetBytes(AesKeySizeBytes);
-            }
-            finally
-            {
-                // Wipe passphrase bytes (string itself can't be wiped reliably)
-                CryptographicOperations.ZeroMemory(passBytes);
-            }
+            return pbkdf2.GetBytes(AesKeySizeBytes);
         }
 
         private static string JoinKeyParts(string[] parts)
@@ -459,13 +427,14 @@ namespace encryption_cypher_app
         //  - next 32  => HMAC key (header authentication)
         private const int DerivedKeyBytes = 64;
 
-        public static void EncryptFile(string inputPath, string outputPath, string passphrase,
-                                       int chunkSize = DefaultChunkSize, int iterations = FilePbkdf2Iterations)
+        public static void EncryptFile(string inputPath, string outputPath, byte[] passphrase,
+                                       int chunkSize = DefaultChunkSize, int iterations = FilePbkdf2Iterations,
+                                       IProgress<long>? progress = null)
         {
 
             if (chunkSize <= 0) throw new ArgumentOutOfRangeException(nameof(chunkSize));
             if (iterations < 10_000) throw new ArgumentOutOfRangeException(nameof(iterations));
-            passphrase ??= string.Empty;
+            passphrase ??= Array.Empty<byte>();
 
             // Prepare per-file salt + nonceBase
             byte[] salt = new byte[FileSaltSize];
@@ -510,9 +479,10 @@ namespace encryption_cypher_app
                 byte[] cipherBuf = new byte[chunkSize];
                 byte[] tag = new byte[GcmTagSize];
 
-                using var gcm = new AesGcm(aesKey);
+                using var gcm = new AesGcm(aesKey, GcmTagSize);
 
                 uint chunkIndex = 0;
+                long totalProcessed = 0;
                 while (true)
                 {
                     int read = ReadFullOrPartial(input, plainBuf);
@@ -543,6 +513,9 @@ namespace encryption_cypher_app
                     output.Write(cipherBuf, 0, read);
                     output.Write(tag, 0, tag.Length);
 
+                    totalProcessed += read;
+                    progress?.Report(totalProcessed);
+
                     CryptographicOperations.ZeroMemory(aad);
                     chunkIndex++;
                 }
@@ -568,9 +541,10 @@ namespace encryption_cypher_app
             }
         }
 
-        public static bool DecryptFile(string inputEncPath, string outputPath, string passphrase)
+        public static bool DecryptFile(string inputEncPath, string outputPath, byte[] passphrase,
+                                       IProgress<long>? progress = null)
         {
-            passphrase ??= string.Empty;
+            passphrase ??= Array.Empty<byte>();
 
             using var input = new FileStream(inputEncPath, FileMode.Open, FileAccess.Read, FileShare.Read);
 
@@ -636,7 +610,7 @@ namespace encryption_cypher_app
                 byte[] headerHash = SHA256.HashData(Concat(headerNoHmac, headerHmac));
 
                 using var output = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.None);
-                using var gcm = new AesGcm(aesKey);
+                using var gcm = new AesGcm(aesKey, GcmTagSize);
 
                 byte[] cipherBuf = new byte[chunkSize];
                 byte[] plainBuf = new byte[chunkSize];
@@ -678,6 +652,7 @@ namespace encryption_cypher_app
 
                     output.Write(plainBuf, 0, (int)ptLen);
                     written += ptLen;
+                    progress?.Report((long)written);
 
                     CryptographicOperations.ZeroMemory(aad);
                     chunkIndex++;
@@ -714,28 +689,18 @@ namespace encryption_cypher_app
         // Helpers (keys + header + AAD)
         // --------------------------
 
-        private static (byte[] aesKey, byte[] hmacKey) DeriveFileKeys(string passphrase, byte[] salt, int iterations)
+        private static (byte[] aesKey, byte[] hmacKey) DeriveFileKeys(byte[] passBytes, byte[] salt, int iterations)
         {
-            string normalized = passphrase.Trim().Normalize(NormalizationForm.FormKC);
-            byte[] passBytes = Encoding.UTF8.GetBytes(normalized);
+            using var pbkdf2 = new Rfc2898DeriveBytes(passBytes, salt, iterations, HashAlgorithmName.SHA256);
+            byte[] keyMaterial = pbkdf2.GetBytes(DerivedKeyBytes);
 
-            try
-            {
-                using var pbkdf2 = new Rfc2898DeriveBytes(passBytes, salt, iterations, HashAlgorithmName.SHA256);
-                byte[] keyMaterial = pbkdf2.GetBytes(DerivedKeyBytes);
+            byte[] aesKey = new byte[32];
+            byte[] hmacKey = new byte[32];
+            Buffer.BlockCopy(keyMaterial, 0, aesKey, 0, 32);
+            Buffer.BlockCopy(keyMaterial, 32, hmacKey, 0, 32);
 
-                byte[] aesKey = new byte[32];
-                byte[] hmacKey = new byte[32];
-                Buffer.BlockCopy(keyMaterial, 0, aesKey, 0, 32);
-                Buffer.BlockCopy(keyMaterial, 32, hmacKey, 0, 32);
-
-                CryptographicOperations.ZeroMemory(keyMaterial);
-                return (aesKey, hmacKey);
-            }
-            finally
-            {
-                CryptographicOperations.ZeroMemory(passBytes);
-            }
+            CryptographicOperations.ZeroMemory(keyMaterial);
+            return (aesKey, hmacKey);
         }
 
         private static byte[] BuildFileHeaderNoHmac(byte version, byte kdfId, byte flags,
@@ -881,28 +846,42 @@ namespace encryption_cypher_app
         /// <param name="mode">0 = Token (hardcoded password), 1 = Vault (user password)</param>
         /// <param name="masterPassword">Required when mode == 1; ignored when mode == 0.</param>
         /// <returns>Raw bytes suitable for writing directly to a .keyenc file.</returns>
-        public static byte[] ExportKeys(string k1, string k2, string k3, string k4,
-                                        int mode, string? masterPassword)
+        /// <summary>
+        /// Serialises four key parts into an encrypted .keyenc byte array.
+        /// </summary>
+        /// <param name="keyParts">Concatenated byte array of four key parts</param>
+        /// <param name="mode">0 = Token (hardcoded password), 1 = Vault (user password)</param>
+        /// <param name="masterPassword">Required when mode == 1; ignored when mode == 0.</param>
+        /// <returns>Raw bytes suitable for writing directly to a .keyenc file.</returns>
+        public static byte[] ExportKeys(byte[] keyParts, int mode, byte[]? masterPassword)
         {
             if (mode != 0 && mode != 1)
                 throw new ArgumentOutOfRangeException(nameof(mode), "Mode must be 0 (Token) or 1 (Vault).");
 
-            string password  = mode == KeyEncModeVault ? (masterPassword ?? string.Empty) : TokenPassword;
-            int    iterations = mode == KeyEncModeVault ? VaultIterations : TokenIterations;
-            byte   modeFlag  = (byte)mode;
+            byte[] password;
+            if (mode == KeyEncModeVault)
+            {
+                password = masterPassword ?? Array.Empty<byte>();
+            }
+            else
+            {
+                password = Encoding.UTF8.GetBytes(TokenPassword);
+            }
 
-            // Build plaintext: k1\nk2\nk3\nk4
-            string joined    = string.Join("\n", k1 ?? "", k2 ?? "", k3 ?? "", k4 ?? "");
-            byte[] plaintext = Encoding.UTF8.GetBytes(joined);
+            int iterations = mode == KeyEncModeVault ? VaultIterations : TokenIterations;
+            byte modeFlag = (byte)mode;
 
-            byte[] salt  = new byte[KeyEncSaltSize];
+            byte[] plaintext = new byte[keyParts.Length];
+            Buffer.BlockCopy(keyParts, 0, plaintext, 0, keyParts.Length);
+
+            byte[] salt = new byte[KeyEncSaltSize];
             byte[] nonce = new byte[KeyEncNonceSize];
             RandomNumberGenerator.Fill(salt);
             RandomNumberGenerator.Fill(nonce);
 
-            byte[] key        = DeriveAesKeyFromPassphrase(password, salt, iterations);
+            byte[] key = DeriveAesKeyFromPassphrase(password, salt, iterations);
             byte[] ciphertext = new byte[plaintext.Length];
-            byte[] tag        = new byte[KeyEncTagSize];
+            byte[] tag = new byte[KeyEncTagSize];
 
             try
             {
@@ -919,6 +898,10 @@ namespace encryption_cypher_app
             {
                 CryptographicOperations.ZeroMemory(key);
                 CryptographicOperations.ZeroMemory(plaintext);
+                if (mode != KeyEncModeVault)
+                {
+                    CryptographicOperations.ZeroMemory(password);
+                }
             }
 
             // Pack: Magic(4) + Version(1) + Mode(1) + Salt(16) + Nonce(12) + CT(var) + Tag(16)
@@ -954,7 +937,7 @@ namespace encryption_cypher_app
         /// <exception cref="InvalidDataException">File is corrupt or has wrong magic/version.</exception>
         /// <exception cref="CryptographicException">Authentication failed (wrong password or tampered file).</exception>
         public static (string k1, string k2, string k3, string k4) ImportKeys(
-            byte[] data, string? masterPassword)
+            byte[] data, byte[]? masterPassword)
         {
             // Minimum size: 4+1+1+16+12+16 = 50 bytes (zero-length ciphertext is technically valid)
             const int MinSize = 4 + 1 + 1 + KeyEncSaltSize + KeyEncNonceSize + KeyEncTagSize;
@@ -991,10 +974,19 @@ namespace encryption_cypher_app
             Buffer.BlockCopy(data, idx,        ciphertext, 0, ctLen);       idx += ctLen;
             Buffer.BlockCopy(data, idx,        tag,        0, KeyEncTagSize);
 
-            string password   = modeFlag == KeyEncModeVault ? (masterPassword ?? string.Empty) : TokenPassword;
-            int    iterations = modeFlag == KeyEncModeVault ? VaultIterations : TokenIterations;
+            byte[] password;
+            if (modeFlag == KeyEncModeVault)
+            {
+                password = masterPassword ?? Array.Empty<byte>();
+            }
+            else
+            {
+                password = Encoding.UTF8.GetBytes(TokenPassword);
+            }
 
-            byte[] key       = DeriveAesKeyFromPassphrase(password, salt, iterations);
+            int iterations = modeFlag == KeyEncModeVault ? VaultIterations : TokenIterations;
+
+            byte[] key = DeriveAesKeyFromPassphrase(password, salt, iterations);
             byte[] plaintext = new byte[ctLen];
 
             try
@@ -1023,9 +1015,13 @@ namespace encryption_cypher_app
                 CryptographicOperations.ZeroMemory(key);
                 CryptographicOperations.ZeroMemory(plaintext);
                 Array.Clear(ciphertext, 0, ciphertext.Length);
-                Array.Clear(tag,        0, tag.Length);
+                Array.Clear(tag, 0, tag.Length);
                 CryptographicOperations.ZeroMemory(salt);
                 CryptographicOperations.ZeroMemory(nonce);
+                if (modeFlag != KeyEncModeVault)
+                {
+                    CryptographicOperations.ZeroMemory(password);
+                }
             }
         }
     }
