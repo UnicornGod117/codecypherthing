@@ -23,3 +23,15 @@ The following features introduced in v3.4 were implemented with the assistance o
 - **Last Used Directory memory** — `AppSettings.cs` persists the last file-dialog directory to `%AppData%\EncSypher\settings.json` using `System.Text.Json`.
 - **`changelog/` restructuring** — `.jules/` folder contents moved to `changelog/` to centralise project change logs. From v3.4 onwards all updates are logged there.
 - **Version bump to 3.4** — version updated across `.csproj`, UI label, and documentation.
+
+---
+
+## v3.5 features
+
+The following features introduced in v3.5 were implemented with the assistance of **Claude Code** (model: `claude-sonnet-4-6`):
+
+- **Asynchronous File Operations** — Heavy file I/O and cryptographic operations are now performed on a background thread, preventing UI freezing during large file processing.
+- **Progress Reporting** — A real-time progress bar and status label provide visual feedback during file encryption and decryption.
+- **Enhanced In-Memory Key Protection** — Passphrases and master passwords are now handled as `byte[]` instead of `string` and are immediately wiped from memory using `CryptographicOperations.ZeroMemory` after use, reducing the risk of memory-scraping attacks.
+- **Code Refinement** — Fixed obsolete `AesGcm` constructor usage and removed unused code.
+- **Version bump to 3.5** — version updated across project files, UI, and documentation.
