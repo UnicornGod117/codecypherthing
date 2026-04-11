@@ -483,6 +483,8 @@ namespace encryption_cypher_app
 
                 uint chunkIndex = 0;
                 long totalProcessed = 0;
+                Span<byte> aad = stackalloc byte[40];
+
                 while (true)
                 {
                     int read = ReadFullOrPartial(input, plainBuf);
@@ -494,7 +496,7 @@ namespace encryption_cypher_app
                     BinaryPrimitives.WriteUInt32BigEndian(nonce.Slice(8, 4), chunkIndex);
 
                     // AAD = headerHash || chunkIndex || ptLen
-                    byte[] aad = BuildChunkAad(headerHash, chunkIndex, (uint)read);
+                    BuildChunkAad(headerHash, chunkIndex, (uint)read, aad);
 
                     // Encrypt only the bytes read
                     gcm.Encrypt(
@@ -516,9 +518,10 @@ namespace encryption_cypher_app
                     totalProcessed += read;
                     progress?.Report(totalProcessed);
 
-                    CryptographicOperations.ZeroMemory(aad);
                     chunkIndex++;
                 }
+
+                CryptographicOperations.ZeroMemory(aad);
 
                 // wipe buffers
                 CryptographicOperations.ZeroMemory(plainBuf);
@@ -618,6 +621,7 @@ namespace encryption_cypher_app
 
                 uint chunkIndex = 0;
                 ulong written = 0;
+                Span<byte> aad = stackalloc byte[40];
 
                 while (written < fileLen)
                 {
@@ -639,7 +643,7 @@ namespace encryption_cypher_app
                     BinaryPrimitives.WriteUInt32BigEndian(nonce.Slice(8, 4), chunkIndex);
 
                     // AAD = headerHash || chunkIndex || ptLen
-                    byte[] aad = BuildChunkAad(headerHash, chunkIndex, ptLen);
+                    BuildChunkAad(headerHash, chunkIndex, ptLen, aad);
 
                     // Decrypt chunk (auth checked here)
                     gcm.Decrypt(
@@ -654,9 +658,10 @@ namespace encryption_cypher_app
                     written += ptLen;
                     progress?.Report((long)written);
 
-                    CryptographicOperations.ZeroMemory(aad);
                     chunkIndex++;
                 }
+
+                CryptographicOperations.ZeroMemory(aad);
 
                 // Optionally: ensure no trailing junk (you can allow trailing metadata later)
                 // If you want strict: if (input.Position != input.Length) return false;
@@ -739,14 +744,12 @@ namespace encryption_cypher_app
             return hmac.ComputeHash(headerNoHmac);
         }
 
-        private static byte[] BuildChunkAad(byte[] headerHash, uint chunkIndex, uint ptLen)
+        private static void BuildChunkAad(ReadOnlySpan<byte> headerHash, uint chunkIndex, uint ptLen, Span<byte> aad)
         {
             // AAD = headerHash(32) || chunkIndex(4) || ptLen(4)
-            byte[] aad = new byte[32 + 4 + 4];
-            Buffer.BlockCopy(headerHash, 0, aad, 0, 32);
-            BinaryPrimitives.WriteUInt32BigEndian(aad.AsSpan(32, 4), chunkIndex);
-            BinaryPrimitives.WriteUInt32BigEndian(aad.AsSpan(36, 4), ptLen);
-            return aad;
+            headerHash.CopyTo(aad.Slice(0, 32));
+            BinaryPrimitives.WriteUInt32BigEndian(aad.Slice(32, 4), chunkIndex);
+            BinaryPrimitives.WriteUInt32BigEndian(aad.Slice(36, 4), ptLen);
         }
 
         // --------------------------
