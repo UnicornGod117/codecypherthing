@@ -2,7 +2,7 @@
 
 **Version 3.5**
 
-A Windows desktop encryption tool built in C# (.NET 9). Encrypts and decrypts text and files using **AES-256-GCM** with a four-part passphrase key system.
+A Windows desktop encryption tool built in C# (.NET 10). Encrypts and decrypts text and files using **AES-256-GCM** with a four-part passphrase key system.
 
 Made by **Unicorn God**.
 
@@ -21,9 +21,9 @@ Made by **Unicorn God**.
 
 ## Prerequisites
 
-You need the **.NET 9 SDK** installed. Download it from:
+You need the **.NET 10 SDK** installed. Download it from:
 
-https://dotnet.microsoft.com/download/dotnet/9.0
+https://dotnet.microsoft.com/download/dotnet/10.0
 
 To check if you already have it:
 
@@ -31,7 +31,7 @@ To check if you already have it:
 dotnet --version
 ```
 
-It should say `9.x.x`. Any `9.x.x` version works.
+It should say `10.x.x`. Any `10.x.x` version works.
 
 ---
 
