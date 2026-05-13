@@ -235,14 +235,13 @@ namespace encryption_cypher_app
         private static byte[] DeriveAesKeyFromPassphrase(byte[] passBytes, byte[] salt, int iterations)
         {
             // PBKDF2-SHA256 -> 32 bytes for AES-256 key
-            using var pbkdf2 = new Rfc2898DeriveBytes(
+            return Rfc2898DeriveBytes.Pbkdf2(
                 password: passBytes,
                 salt: salt,
                 iterations: iterations,
-                hashAlgorithm: HashAlgorithmName.SHA256
+                hashAlgorithm: HashAlgorithmName.SHA256,
+                outputLength: AesKeySizeBytes
             );
-
-            return pbkdf2.GetBytes(AesKeySizeBytes);
         }
 
         private static string JoinKeyParts(string[] parts)
@@ -484,6 +483,8 @@ namespace encryption_cypher_app
                 uint chunkIndex = 0;
                 long totalProcessed = 0;
                 Span<byte> aad = stackalloc byte[40];
+                Span<byte> nonce = stackalloc byte[12];
+                Span<byte> lenBuf = stackalloc byte[4];
 
                 while (true)
                 {
@@ -491,7 +492,6 @@ namespace encryption_cypher_app
                     if (read == 0) break;
 
                     // nonce = nonceBase (8) || chunkIndex (4)
-                    Span<byte> nonce = stackalloc byte[12];
                     nonceBase.AsSpan().CopyTo(nonce.Slice(0, 8));
                     BinaryPrimitives.WriteUInt32BigEndian(nonce.Slice(8, 4), chunkIndex);
 
@@ -508,7 +508,6 @@ namespace encryption_cypher_app
                     );
 
                     // Write chunk record: ptLen (4) + ciphertext(ptLen) + tag(16)
-                    Span<byte> lenBuf = stackalloc byte[4];
                     BinaryPrimitives.WriteUInt32BigEndian(lenBuf, (uint)read);
                     output.Write(lenBuf);
 
@@ -622,6 +621,7 @@ namespace encryption_cypher_app
                 uint chunkIndex = 0;
                 ulong written = 0;
                 Span<byte> aad = stackalloc byte[40];
+                Span<byte> nonce = stackalloc byte[12];
 
                 while (written < fileLen)
                 {
@@ -638,7 +638,6 @@ namespace encryption_cypher_app
                     ReadExactlyInto(input, tag, tag.Length);
 
                     // nonce = nonceBase || chunkIndex
-                    Span<byte> nonce = stackalloc byte[12];
                     nonceBase.AsSpan().CopyTo(nonce.Slice(0, 8));
                     BinaryPrimitives.WriteUInt32BigEndian(nonce.Slice(8, 4), chunkIndex);
 
@@ -696,8 +695,7 @@ namespace encryption_cypher_app
 
         private static (byte[] aesKey, byte[] hmacKey) DeriveFileKeys(byte[] passBytes, byte[] salt, int iterations)
         {
-            using var pbkdf2 = new Rfc2898DeriveBytes(passBytes, salt, iterations, HashAlgorithmName.SHA256);
-            byte[] keyMaterial = pbkdf2.GetBytes(DerivedKeyBytes);
+            byte[] keyMaterial = Rfc2898DeriveBytes.Pbkdf2(passBytes, salt, iterations, HashAlgorithmName.SHA256, DerivedKeyBytes);
 
             byte[] aesKey = new byte[32];
             byte[] hmacKey = new byte[32];

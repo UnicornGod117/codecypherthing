@@ -34,14 +34,14 @@ namespace encryption_cypher_app
 
             randomiserror.Visible = false;
 
-            Form1 form1Instance = Application.OpenForms.OfType<Form1>().FirstOrDefault();
+            Form1? form1Instance = Application.OpenForms.OfType<Form1>().FirstOrDefault();
             if (form1Instance != null)
                 form1Instance.randomisekeys(total, numNumbers, numSpecial);
         }
 
         private void hideKeysCheckbox_CheckedChanged(object sender, EventArgs e)
         {
-            Form1 form1Instance = Application.OpenForms.OfType<Form1>().FirstOrDefault();
+            Form1? form1Instance = Application.OpenForms.OfType<Form1>().FirstOrDefault();
             if (form1Instance == null) return;
 
             bool hide = hideKeysCheckbox.Checked;
@@ -388,7 +388,7 @@ namespace encryption_cypher_app
 
         private byte[] GetPassphraseFromForm1()
         {
-            Form1 form1 = Application.OpenForms.OfType<Form1>().FirstOrDefault();
+            Form1? form1 = Application.OpenForms.OfType<Form1>().FirstOrDefault();
             if (form1 == null) throw new InvalidOperationException("Form1 is not open.");
 
             return form1.GetSecurePassphrase();
