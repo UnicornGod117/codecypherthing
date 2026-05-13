@@ -35,3 +35,15 @@ The following features introduced in v3.5 were implemented with the assistance o
 - **Enhanced In-Memory Key Protection** — Passphrases and master passwords are now handled as `byte[]` instead of `string` and are immediately wiped from memory using `CryptographicOperations.ZeroMemory` after use, reducing the risk of memory-scraping attacks.
 - **Code Refinement** — Fixed obsolete `AesGcm` constructor usage and removed unused code.
 - **Version bump to 3.5** — version updated across project files, UI, and documentation.
+
+---
+
+## .NET 10 Audit & Optimization (Post-v3.5)
+
+The project was audited for .NET 10 compatibility and further optimized by **Gemini CLI**:
+
+- **Modernized Key Derivation** — Updated all `Rfc2898DeriveBytes` usage to the modern `Pbkdf2` static method, resolving `SYSLIB0060` obsolescence warnings.
+- **Stack Integrity Fixes** — Resolved `CA2014` warnings by moving `stackalloc` operations outside of critical loops in `EncryptFile` and `DecryptFile`, preventing potential stack overflow during large file processing.
+- **Null-Safety Hardening** — Fixed `CS8600` nullability warnings in `Form2.cs` to align with modern C# standards.
+- **Build Hygiene** — Performed a full audit of recent Jules (AI) contributions to ensure no logic or UI layout regressions occurred during the .NET 10 transition.
+
